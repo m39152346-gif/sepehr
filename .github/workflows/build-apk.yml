@@ -2,7 +2,10 @@ name: Build Sepehr APK
 
 on:
   push:
-    branches: [main, master]
+    branches:
+      - main
+      - master
+      - 'arena/**'
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -13,6 +16,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sepehr_app
     steps:
       - uses: actions/checkout@v4
 
@@ -30,14 +36,14 @@ jobs:
         run: |
           if [ ! -d android ]; then
             flutter create . --platforms=android --org com.sepehr --project-name sepehr
-            rm -f test/widget_test.dart  # template test references a MyApp class we don't have
+            rm -f test/widget_test.dart
           fi
 
       - name: Add internet + location permissions, Persian app name
         run: |
           M=android/app/src/main/AndroidManifest.xml
-          grep -q "android.permission.INTERNET" $M || perl -0pi -e 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <application#' $M
-          sed -i 's#android:label="sepehr"#android:label="سپهر"#' $M
+          grep -q "android.permission.INTERNET" "$M" || perl -0pi -e 's#<application#<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <application#' "$M"
+          sed -i 's#android:label="sepehr"#android:label="سپهر"#' "$M"
 
       - run: flutter pub get
 
@@ -50,11 +56,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: sepehr-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: sepehr_app/build/app/outputs/flutter-apk/app-release.apk
 
       - name: Publish GitHub Release (on version tags like v1.0.0)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: sepehr_app/build/app/outputs/flutter-apk/app-release.apk
           generate_release_notes: true
