@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'core/app_settings.dart';
 import 'core/place.dart';
 import 'core/theme.dart';
-import 'screens/location_picker.dart';
-import 'screens/tonight.dart';
-import 'screens/sky_map.dart';
-import 'screens/iss.dart';
 import 'screens/apod.dart';
 import 'screens/events.dart';
+import 'screens/iss.dart';
+import 'screens/location_picker.dart';
 import 'screens/quiz.dart';
+import 'screens/settings.dart';
+import 'screens/sky_map.dart';
+import 'screens/tonight.dart';
+import 'screens/tools.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await loadSavedPlace();
+  await Future.wait([loadSavedPlace(), loadAppSettings()]);
   runApp(const SepehrApp());
 }
 
-// Grayscale then multiply red: real "night vision" mode astronomers use.
 const _nightMatrix = <double>[
   .30, .59, .11, 0, 0,
   0, 0, 0, 0, 0,
@@ -25,43 +29,86 @@ const _nightMatrix = <double>[
 
 class SepehrApp extends StatefulWidget {
   const SepehrApp({super.key});
+
   @override
   State<SepehrApp> createState() => _SepehrAppState();
 }
 
 class _SepehrAppState extends State<SepehrApp> {
-  int tab = 0;
-  bool night = false;
+  int _tab = 0;
 
   @override
-  Widget build(BuildContext context) {
-    // Rebuild everything when the user picks another city.
-    return ValueListenableBuilder<Place>(valueListenable: currentPlace, builder: (context, place, _) => _build(place));
-  }
+  Widget build(BuildContext context) => ValueListenableBuilder<AppSettings>(
+        valueListenable: appSettings,
+        builder: (context, settings, _) => MaterialApp(
+          title: 'سپهر',
+          debugShowCheckedModeBanner: false,
+          locale: const Locale('fa'),
+          supportedLocales: const [Locale('fa')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: buildTheme(),
+          builder: (context, child) {
+            final media = MediaQuery.of(context);
+            Widget content = MediaQuery(
+              data: media.copyWith(textScaler: TextScaler.linear(settings.textScale)),
+              child: Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox.shrink()),
+            );
+            if (settings.nightVision) {
+              content = ColorFiltered(colorFilter: const ColorFilter.matrix(_nightMatrix), child: content);
+            }
+            return content;
+          },
+          home: ValueListenableBuilder<Place>(
+            valueListenable: currentPlace,
+            builder: (context, place, _) => _home(place, settings),
+          ),
+        ),
+      );
 
-  Widget _build(Place place) {
-    final pages = [TonightScreen(onOpenSky: () => setState(() => tab = 1)), SkyMapScreen(key: ValueKey('sky-${place.lat}-${place.lon}')), const IssScreen(), const ApodScreen(), const EventsScreen(), const QuizScreen()];
-    final app = Scaffold(
+  Widget _home(Place place, AppSettings settings) {
+    final pages = <Widget>[
+      TonightScreen(onOpenSky: () => setState(() => _tab = 1)),
+      SkyMapScreen(key: ValueKey('sky-${place.lat}-${place.lon}')),
+      IssScreen(active: _tab == 2),
+      ApodScreen(active: _tab == 3),
+      const EventsScreen(),
+      const QuizScreen(),
+    ];
+    return Scaffold(
       appBar: AppBar(
-        backgroundColor: C.night,
         title: const Text('سپهر', style: TextStyle(color: C.brass, fontWeight: FontWeight.w900)),
         actions: [
-          Builder(builder: (ctx) => TextButton.icon(
-            onPressed: () => Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => const LocationPicker())),
-            icon: const Icon(Icons.place, color: C.gold, size: 18),
-            label: Text(place.name, style: const TextStyle(color: C.gold)),
-          )),
           IconButton(
-            tooltip: 'دید در شب',
-            icon: Icon(night ? Icons.visibility : Icons.visibility_outlined, color: night ? C.red : C.muted),
-            onPressed: () => setState(() => night = !night),
+            tooltip: 'مکان رصد · ${place.label}',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LocationPicker())),
+            icon: const Icon(Icons.place, color: C.gold),
+          ),
+          IconButton(
+            tooltip: 'ابزارهای رصد',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ToolsScreen())),
+            icon: const Icon(Icons.build_circle_outlined, color: C.muted),
+          ),
+          IconButton(
+            tooltip: 'تنظیمات و دسترس‌پذیری',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+            icon: const Icon(Icons.tune, color: C.muted),
+          ),
+          IconButton(
+            tooltip: settings.nightVision ? 'خاموش کردن دید در شب' : 'روشن کردن دید در شب',
+            icon: Icon(settings.nightVision ? Icons.visibility : Icons.visibility_outlined, color: settings.nightVision ? C.red : C.muted),
+            onPressed: () => updateAppSettings(nightVision: !settings.nightVision),
           ),
         ],
       ),
-      body: IndexedStack(index: tab, children: pages),
+      body: IndexedStack(index: _tab, children: pages),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (i) => setState(() => tab = i),
+        selectedIndex: _tab,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        onDestinationSelected: (index) => setState(() => _tab = index),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.nightlight_round), label: 'امشب'),
           NavigationDestination(icon: Icon(Icons.explore), label: 'آسمان'),
@@ -71,13 +118,6 @@ class _SepehrAppState extends State<SepehrApp> {
           NavigationDestination(icon: Icon(Icons.quiz), label: 'کوییز'),
         ],
       ),
-    );
-    return MaterialApp(
-      title: 'سپهر',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
-      builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child!),
-      home: night ? ColorFiltered(colorFilter: const ColorFilter.matrix(_nightMatrix), child: app) : app,
     );
   }
 }

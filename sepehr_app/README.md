@@ -1,62 +1,66 @@
 <div dir="rtl">
 
-# سپهر 🔭
+# سپهر ۲ 🔭
 
-**اپ نجوم فارسی برای اندروید**، آنلاین و برای هر شهری در دنیا. ساخته‌شده با Flutter.
+**اپ نجوم فارسی برای اندروید**؛ از برنامه‌ریزی رصد تا پیدا کردن ستاره‌ها و دنبال‌کردن ایستگاه فضایی. نسخه‌ی ۲ با تمرکز بر پیش‌بینی قابل‌فهم، ابزارهای میدانی و ذخیره‌سازی تنظیم‌ها ساخته شده است.
 
-[![Build APK](../../actions/workflows/build-apk.yml/badge.svg)](../../actions/workflows/build-apk.yml)
+[![Build APK](../actions/workflows/build-apk.yml/badge.svg)](../actions/workflows/build-apk.yml)
 
-## قابلیت‌ها
-- 🌍 **انتخاب هر شهر در هر کشور** با جستجو (فارسی یا انگلیسی) یا **GPS**؛ همه‌ی محاسبات و ساعت‌ها طبق همون شهر
-- 🌙 **آسمان امشب**: فاز ماه، درصد ابر (زنده)، غروب و طلوع، امتیاز رصد
-- ✨ **نقشه‌ی آسمان**: ستاره‌ها و صورت‌های فلکی بالای سر تو، با کشیدن انگشت زمان رو جابه‌جا کن
-- 🛰️ **ردیاب زنده‌ی ISS** + فاصله‌اش تا شهرت و اینکه الان دیده میشه یا نه
-- 🖼️ **عکس نجومی روز ناسا**
-- 📅 **تقویم نجومی** با یادآور
-- 🧠 **کوییز نجوم**
-- 🔴 **حالت دید در شب** (صفحه‌ی قرمز برای رصد)
+## قابلیت‌های نسخه‌ی ۲
 
-## دانلود
-آخرین نسخه‌ی APK از بخش [Releases](../../releases) قابل دانلوده.
+1. **امتیاز رصد شفاف** بر اساس ابر، فاز ماه، رطوبت، باد و دید افقی؛ همراه با توضیح محدودیت برآورد.
+2. **پیش‌بینی ساعتی ۱۲ساعته و چشم‌انداز هفت‌روزه** شامل ابر، دما و احتمال بارش، با واحد °C/°F.
+3. **فازهای ماه و تقویم نجومی پویا**؛ رویدادهای قمری، بارش‌های شهابی و فصل‌ها با برچسب تقریبی.
+4. **نقشه‌ی تعاملی‌تر آسمان** با جابه‌جایی زمان، بزرگ‌نمایی، حد قدر ستاره‌ها و روشن/خاموش‌کردن خطوط صور فلکی.
+5. **ردیاب بهتر ISS** با ارتفاع مداری، سمت و ارتفاع هندسی نسبت به افق شهر؛ بدون ادعای رؤیت قطعی.
+6. **بایگانی عکس روز ناسا** با انتخاب تاریخ، نمایش عکس/ویدئو و نشان‌کردن موارد دلخواه روی دستگاه.
+7. **تقویم قابل فیلتر** برای ماه، بارش شهابی و رویدادهای فصلی؛ نشان‌ها در دستگاه ذخیره می‌شوند.
+8. **کوییز بازطراحی‌شده** با ترتیب تصادفی سؤال‌ها، توضیح پاسخ و ثبت بهترین امتیاز.
+9. **مکان‌های رصد اخیر و نشان‌شده**؛ جست‌وجوی شهر یا دریافت موقعیت با GPS.
+10. **کیت رصد و شخصی‌سازی**: محاسبه‌گر تلسکوپ، تایمر سازگاری چشم، چک‌لیست، دید در شب قرمز، اندازه‌ی نوشته و واحد دما.
 
-## ساخت خودکار با GitHub Actions
-- هر بار که کد رو push کنی، APK خودکار ساخته میشه و از تب **Actions ← آخرین اجرا ← sepehr-apk** دانلود میشه.
-- برای انتشار نسخه‌ی رسمی، یه تگ بزن (مثلاً `v1.0.0`)؛ APK خودکار تو **Releases** منتشر میشه.
-- کلید ناسا: تو **Settings ← Secrets and variables ← Actions** یه secret به اسم `NASA_KEY` بساز (کلید رایگان از https://api.nasa.gov). اگه نسازی، از `DEMO_KEY` استفاده میشه.
+## دریافت APK
 
-## اجرا روی کامپیوتر خودت
+هر push روی شاخه‌ی کاری یا شاخه‌ی اصلی، APK نسخه‌ی release را در GitHub Actions می‌سازد. در اجرای موفق، از بخش **Artifacts → sepehr-apk** فایل را دریافت و از ZIP، `app-release.apk` را خارج کن. برای انتشار نسخه‌ی رسمی، تگ نسخه‌ای مانند `v2.0.0` بساز.
+
+## ساخت محلی
+
+از پوشه‌ی ریشه‌ی مخزن:
+
 ```bash
+cd sepehr_app
 flutter create . --platforms=android --org com.sepehr --project-name sepehr
 flutter pub get
-flutter run
+flutter test
+flutter build apk --release
 ```
-بعد از `flutter create`، این مجوزها رو بالای تگ `<application` تو `android/app/src/main/AndroidManifest.xml` اضافه کن:
+
+Workflow در `.github/workflows/build-apk.yml` مجوز اینترنت و موقعیت را به Manifest اندروید اضافه می‌کند. برای ساخت دستی، این مجوزها باید در `android/app/src/main/AndroidManifest.xml` بالای `<application>` باشند:
+
 ```xml
 <uses-permission android:name="android.permission.INTERNET"/>
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 ```
 
-## ساختار پروژه
-```
-lib/
-  main.dart                 ← ناوبری، حالت دید در شب
-  core/astro.dart           ← محاسبات نجومی (ستاره‌ها، ماه، رویدادها)
-  core/place.dart           ← شهر انتخابی و ذخیره‌اش
-  core/api.dart             ← همه‌ی سرویس‌های آنلاین
-  core/theme.dart           ← رنگ‌ها، فونت وزیرمتن، اعداد فارسی
-  screens/                  ← صفحه‌های اپ
-test/astro_test.dart        ← تست محاسبات
+برای محدودیت کمتر NASA APOD، در GitHub Actions یک secret به نام `NASA_KEY` قرار بده؛ در غیر این صورت اپ از `DEMO_KEY` استفاده می‌کند.
+
+## ساختار
+
+```text
+lib/core/       محاسبات نجومی، API، مکان و تنظیم‌ها
+lib/screens/    خانه، نقشه، ISS، عکس روز، رویدادها، کوییز و ابزارها
+test/           تست محاسبات، هندسه‌ی دید و خواندن پیش‌بینی هوا
 ```
 
-## سرویس‌های آنلاین (همه رایگان)
-[Open-Meteo](https://open-meteo.com) (جستجوی شهر و هوا) · [BigDataCloud](https://www.bigdatacloud.com) (اسم شهر از GPS) · [wheretheiss.at](https://wheretheiss.at) (ISS) · [NASA APOD](https://api.nasa.gov)
+تمام پیش‌بینی‌های هوا و زمان فاز ماه تقریبی‌اند و جایگزین ابزار رصدی/هواشناسی حرفه‌ای نیستند.
 
 ## مجوز
+
 MIT
 
 </div>
 
 ---
 
-**Sepehr** is a Persian astronomy app for Android (Flutter): worldwide city picker, live sky map, moon phase, cloud forecast, ISS tracker, NASA APOD, astro calendar, quiz and red night-vision mode. Pushes to `main` build an APK via GitHub Actions; tags `v*` publish a Release.
+**Sepehr 2.0** is a Persian Flutter astronomy app with a seven-day weather outlook, an interactive sky map, topocentric ISS tracking, NASA APOD archive and favorites, a rolling astronomy calendar, randomized quiz, observing tools, saved locations, and persistent accessibility settings.

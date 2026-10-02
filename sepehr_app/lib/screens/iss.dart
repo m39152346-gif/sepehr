@@ -1,86 +1,265 @@
 import 'dart:async';
-import 'dart:math';
+
 import 'package:flutter/material.dart';
+
 import '../core/api.dart';
+import '../core/astro.dart';
 import '../core/place.dart';
 import '../core/theme.dart';
 
-/// Live ISS position from the free wheretheiss.at API (no key needed), refreshed every 5s.
+/// Live ISS telemetry with local topocentric elevation and bearing estimates.
 class IssScreen extends StatefulWidget {
-  const IssScreen({super.key});
+  final bool active;
+  const IssScreen({super.key, this.active = true});
+
   @override
   State<IssScreen> createState() => _IssScreenState();
 }
 
 class _IssScreenState extends State<IssScreen> {
-  Map<String, dynamic>? data;
-  String? error;
-  Timer? timer;
+  Map<String, dynamic>? _data;
+  String? _error;
+  DateTime? _updatedAt;
+  Timer? _timer;
+  bool _loading = false;
+  int _requestId = 0;
 
   @override
   void initState() {
     super.initState();
-    _load();
-    timer = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+    currentPlace.addListener(_onPlaceChanged);
+    if (widget.active) _activate();
   }
 
   @override
-  void dispose() { timer?.cancel(); super.dispose(); }
-
-  Future<void> _load() async {
-    try {
-      final r = await Api.iss();
-      if (!mounted) return;
-      setState(() { data = r; error = null; });
-    } catch (e) {
-      if (mounted) setState(() => error = 'اتصال به اینترنت رو چک کن');
+  void didUpdateWidget(covariant IssScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) {
+      _activate();
+    } else if (!widget.active && oldWidget.active) {
+      _deactivate();
     }
   }
 
-  Widget _stat(String label, String value, String unit) => Expanded(
-    child: Card(color: C.plate, child: Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Column(children: [
-      Text(label, style: const TextStyle(color: C.muted)),
-      Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      Text(unit, style: const TextStyle(color: C.muted, fontSize: 12)),
-    ]))),
-  );
+  void _activate() {
+    _load();
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+  }
 
-  /// Great-circle distance (km) between the selected city and the point under the ISS.
-  double _distanceKm(double lat1, double lon1, double lat2, double lon2) {
-    const r = 6371.0, k = pi / 180;
-    final a = pow(sin((lat2 - lat1) * k / 2), 2) + cos(lat1 * k) * cos(lat2 * k) * pow(sin((lon2 - lon1) * k / 2), 2);
-    return 2 * r * asin(sqrt(a));
+  void _deactivate() {
+    _timer?.cancel();
+    _timer = null;
+    _requestId++;
+    if (mounted) setState(() => _loading = false);
+  }
+
+  void _onPlaceChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    currentPlace.removeListener(_onPlaceChanged);
+    _timer?.cancel();
+    _requestId++;
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    if (_loading) return;
+    final requestId = ++_requestId;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final response = await Api.iss();
+      final latitude = _number(response['latitude']);
+      final longitude = _number(response['longitude']);
+      if (latitude == null || longitude == null) throw const ApiException('مختصات ایستگاه در پاسخ وجود ندارد.');
+      if (!mounted || requestId != _requestId) return;
+      setState(() {
+        _data = response;
+        _updatedAt = DateTime.now();
+        _error = null;
+      });
+    } catch (_) {
+      if (mounted && requestId == _requestId) {
+        setState(() => _error = 'موقعیت زنده در دسترس نیست؛ اتصال را بررسی کن.');
+      }
+    } finally {
+      if (mounted && requestId == _requestId) setState(() => _loading = false);
+    }
+  }
+
+  double? _number(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final d = data;
     final place = currentPlace.value;
-    final dist = d == null ? null : _distanceKm(place.lat, place.lon, (d['latitude'] as num).toDouble(), (d['longitude'] as num).toDouble());
-    return ListView(padding: const EdgeInsets.all(24), children: [
-      const Text('ایستگاه فضایی', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-      const Text('موقعیت زنده‌ی ISS، هر ۵ ثانیه', style: TextStyle(color: C.muted)),
-      const SizedBox(height: 24),
-      if (error != null) Text(error!, style: const TextStyle(color: C.red)),
-      if (d == null && error == null) const Center(child: CircularProgressIndicator(color: C.brass)),
-      if (d != null) ...[
-        Card(color: C.teal, child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('الان بالای این نقطه‌ست', style: TextStyle(color: Color(0xFFD6F6FB))),
-          const SizedBox(height: 6),
-          Text('${fa(d['latitude'], 2)}° عرض · ${fa(d['longitude'], 2)}° طول', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-          Text(d['visibility'] == 'daylight' ? 'در روشنایی روز' : 'در سایه‌ی زمین', style: const TextStyle(color: Color(0xFFD6F6FB))),
-        ]))),
-        Card(color: C.plate, child: ListTile(
-          leading: Icon((dist ?? 1e9) < 2000 ? Icons.visibility : Icons.public, color: (dist ?? 1e9) < 2000 ? C.gold : C.muted),
-          title: Text('${fa(dist ?? 0)} کیلومتر تا ${place.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text((dist ?? 1e9) < 2000 ? 'الان بالای افق شماست! به آسمان نگاه کن' : 'فعلاً از ${place.name} دیده نمیشه', style: const TextStyle(color: C.muted)),
-        )),
-        Row(children: [
-          _stat('ارتفاع', fa(d['altitude']), 'کیلومتر'),
-          _stat('سرعت', fa(d['velocity']), 'کیلومتر/ساعت'),
-          _stat('هر دور', fa(92), 'دقیقه'),
-        ]),
-      ],
-    ]);
+    final data = _data;
+    final latitude = _number(data?['latitude']);
+    final longitude = _number(data?['longitude']);
+    final altitude = _number(data?['altitude']) ?? 408;
+    final look = latitude == null || longitude == null
+        ? null
+        : satelliteLook(
+            observerLatitude: place.lat,
+            observerLongitude: place.lon,
+            satelliteLatitude: latitude,
+            satelliteLongitude: longitude,
+            altitudeKm: altitude,
+          );
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: C.brass,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 26),
+        children: [
+          Row(
+            children: [
+              const Expanded(child: Text('ایستگاه فضایی', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900))),
+              IconButton(
+                tooltip: 'به‌روزرسانی',
+                onPressed: _loading ? null : _load,
+                icon: _loading
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: C.brass))
+                    : const Icon(Icons.refresh, color: C.brass),
+              ),
+            ],
+          ),
+          Text('موقعیت زنده‌ی ISS · به‌روزرسانی هر ۱۵ ثانیه', style: const TextStyle(color: C.muted)),
+          const SizedBox(height: 12),
+          if (_error != null && data == null)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.satellite_alt, color: C.warning),
+                title: Text(_error!),
+                trailing: TextButton(onPressed: _load, child: const Text('تلاش دوباره')),
+              ),
+            ),
+          if (_loading && data == null)
+            const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator(color: C.brass))),
+          if (data != null && look != null) ...[
+            _positionCard(data, look, altitude),
+            const SizedBox(height: 10),
+            _passCard(look, place.name, data['visibility']?.toString()),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _stat('ارتفاع مداری', fa(altitude), 'کیلومتر'),
+                _stat('سرعت', fa(_number(data['velocity']) ?? 0), 'کیلومتر/ساعت'),
+                _stat('مدار زمین', '۹۲', 'دقیقه'),
+              ],
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 6),
+              Text(_error!, style: const TextStyle(color: C.warning, fontSize: 12)),
+            ],
+            if (_updatedAt != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('آخرین دریافت: ${formatLocalClock(_updatedAt!)} · مکان تو: ${place.label}',
+                    style: const TextStyle(color: C.muted, fontSize: 12)),
+              ),
+            const SizedBox(height: 12),
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  '«بالای افق» فقط هندسه‌ی دید را نشان می‌دهد؛ روشنایی آسمان، ابر، ساختمان‌ها و زمان عبور تعیین می‌کنند که ایستگاه واقعاً دیده شود یا نه.',
+                  style: TextStyle(color: C.muted, height: 1.5),
+                ),
+              ),
+            ),
+          ],
+          if (data == null && _error == null && !_loading)
+            const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('برای دریافت موقعیت، صفحه را تازه کن.', style: TextStyle(color: C.muted)))),
+        ],
+      ),
+    );
+  }
+
+  Widget _positionCard(Map<String, dynamic> data, SatelliteLook look, double altitude) => Card(
+        color: C.teal,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.public, color: Color(0xFFD6F6FB)),
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('نقطه‌ی زیر ایستگاه روی زمین', style: TextStyle(color: Color(0xFFD6F6FB)))),
+                  if (data['visibility'] != null)
+                    Text(
+                      data['visibility'].toString() == 'daylight' ? 'روشن‌شده با خورشید' : data['visibility'].toString(),
+                      style: const TextStyle(color: Color(0xFFD6F6FB), fontSize: 11),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${fa(_number(data['latitude']) ?? 0, 2)}° عرض · ${fa(_number(data['longitude']) ?? 0, 2)}° طول',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'فاصله‌ی سطحی ${fa(look.groundDistanceKm)} کیلومتر · ارتفاع مداری ${fa(altitude)} کیلومتر',
+                style: const TextStyle(color: Color(0xFFD6F6FB), fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  Widget _passCard(SatelliteLook look, String city, String? illumination) {
+    final aboveHorizon = look.aboveGeometricHorizon;
+    final bearingName = _bearingName(look.bearingDegrees);
+    final statusColor = aboveHorizon ? C.good : C.muted;
+    return Card(
+      child: ListTile(
+        leading: Icon(aboveHorizon ? Icons.visibility : Icons.visibility_off, color: statusColor, size: 30),
+        title: Text(
+          aboveHorizon ? 'بالای افق هندسی شماست' : 'فعلاً زیر افق هندسی است',
+          style: TextStyle(fontWeight: FontWeight.bold, color: statusColor),
+        ),
+        subtitle: Text(
+          'از $city رو به $bearingName · ارتفاع ${fa(look.elevationDegrees, 1)}° · سمت ${fa(look.bearingDegrees, 0)}°'
+          '${illumination == null ? '' : '\nوضع خورشید برای خود ایستگاه: ${illumination == 'daylight' ? 'روشن' : 'در سایه'}'}',
+          style: const TextStyle(color: C.muted, height: 1.5),
+        ),
+        isThreeLine: illumination != null,
+      ),
+    );
+  }
+
+  Widget _stat(String label, String value, String unit) => Expanded(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+            child: Column(
+              children: [
+                Text(label, style: const TextStyle(color: C.muted, fontSize: 11), textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                Text(unit, style: const TextStyle(color: C.muted, fontSize: 11)),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  String _bearingName(double degrees) {
+    const directions = ['شمال', 'شمال‌شرق', 'شرق', 'جنوب‌شرق', 'جنوب', 'جنوب‌غرب', 'غرب', 'شمال‌غرب'];
+    return directions[((degrees + 22.5) / 45).floor() % directions.length];
   }
 }
