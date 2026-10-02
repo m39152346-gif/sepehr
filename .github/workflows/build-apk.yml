@@ -48,7 +48,33 @@ jobs:
       - run: flutter pub get
 
       - name: Run tests
-        run: flutter test
+        run: |
+          set +e
+          flutter test --reporter=json > "$RUNNER_TEMP/flutter-test.jsonl" 2> "$RUNNER_TEMP/flutter-test.stderr"
+          test_status=$?
+          python3 - "$RUNNER_TEMP/flutter-test.jsonl" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          report = pathlib.Path(sys.argv[1])
+          failures = []
+          if report.exists():
+              for line in report.read_text(errors="replace").splitlines():
+                  try:
+                      event = json.loads(line)
+                  except json.JSONDecodeError:
+                      continue
+                  if event.get("type") == "error":
+                      details = event.get("error", "Test failed")
+                      stack = event.get("stackTrace", "")
+                      failures.append(f"{details}\\n{stack}".strip())
+          for failure in failures:
+              escaped = failure.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::error title=Flutter test failure::{escaped}")
+          PY
+          cat "$RUNNER_TEMP/flutter-test.stderr"
+          exit "$test_status"
 
       - name: Build APK
         run: flutter build apk --release --dart-define=NASA_KEY=${{ secrets.NASA_KEY }}
