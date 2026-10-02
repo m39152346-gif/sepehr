@@ -23,6 +23,8 @@ void main() {
   testWidgets('dark-adaptation timer starts, pauses, and resets', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: Directionality(textDirection: TextDirection.rtl, child: ToolsScreen())));
     await tester.pumpAndSettle();
+    await tester.dragUntilVisible(find.text('۲۰:۰۰'), find.byType(ListView), const Offset(0, -300));
+    await tester.pumpAndSettle();
     expect(find.text('۲۰:۰۰'), findsOneWidget);
 
     await tester.ensureVisible(find.text('شروع'));
