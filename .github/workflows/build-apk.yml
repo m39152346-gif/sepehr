@@ -58,10 +58,26 @@ jobs:
           import pathlib
           import sys
 
-          lines = [line for line in pathlib.Path(sys.argv[1]).read_text(errors="replace").splitlines() if line.strip()]
-          for line in lines[-80:]:
-              escaped = line.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              print(f"::error title=Flutter test output::{escaped}")
+          raw = pathlib.Path(sys.argv[1]).read_text(errors="replace").replace(chr(13), chr(10))
+          lines = []
+          for source_line in raw.splitlines():
+              line = source_line
+              while chr(27) + "[" in line:
+                  start = line.find(chr(27) + "[")
+                  end = line.find("m", start)
+                  if end < 0:
+                      break
+                  line = line[:start] + line[end + 1:]
+              lines.append(line.strip())
+          keywords = ("expected:", "actual:", "which:", "exception", "testfailure", "renderflex", "rangeerror", "bad state", "failed", "error:")
+          def is_progress(line):
+              return len(line) >= 5 and line[:2].isdigit() and line[2] == ":" and line[3:5].isdigit()
+          details = [line for line in lines if line and not is_progress(line) and any(word in line.lower() for word in keywords)]
+          if not details:
+              details = [line for line in lines if line and not is_progress(line)][-8:]
+          for line in details[-8:]:
+              escaped = line.replace("%", "%25").replace(chr(13), "%0D").replace(chr(10), "%0A")
+              print(f"::error title=Flutter test failure::{escaped}")
           PY
           fi
           exit "$test_status"
@@ -74,7 +90,7 @@ jobs:
           name: sepehr-apk
           path: sepehr_app/build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Publish GitHub Release (on version tags like v1.0.0)
+      - name: Publish GitHub Release (on version tags like v2.0.0)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:

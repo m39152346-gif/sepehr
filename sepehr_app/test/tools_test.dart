@@ -15,7 +15,7 @@ void main() {
     expect(find.textContaining('۷۵٫۰×'), findsOneWidget);
     expect(find.textContaining('۲٫۰۰ میلی‌متر'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField).first, '200');
+    await tester.enterText(find.byType(TextField).at(1), '1000');
     await tester.pump();
     expect(find.textContaining('۱۰۰٫۰×'), findsOneWidget);
   });
