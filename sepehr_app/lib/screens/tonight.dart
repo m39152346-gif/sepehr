@@ -380,7 +380,7 @@ class _TonightScreenState extends State<TonightScreen> with SingleTickerProvider
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(index == 0 ? 'امروز' : fa(date.formatter.wN), style: const TextStyle(color: C.muted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(index == 0 ? 'امروز' : faText(date.formatter.wN), style: const TextStyle(color: C.muted, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
                           Icon(_weatherCodeIcon(day.weatherCode), color: C.brass, size: 19),
                           Text('↑${formatTemperature(day.highC, fahrenheit: fahrenheit)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
                           Text('↓${formatTemperature(day.lowC, fahrenheit: fahrenheit)}', style: const TextStyle(color: C.muted, fontSize: 10)),

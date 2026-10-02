@@ -96,12 +96,7 @@ class _LocationPickerState extends State<LocationPicker> {
       if (permission == LocationPermission.deniedForever) {
         throw const _LocationMessage('اجازه‌ی موقعیت برای برنامه مسدود شده؛ آن را از تنظیمات گوشی فعال کن.');
       }
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 20),
-        ),
-      );
+      final position = await Geolocator.getCurrentPosition().timeout(const Duration(seconds: 20));
       final place = await Api.reverse(position.latitude, position.longitude);
       if (mounted) await _choose(place);
     } on _LocationMessage catch (error) {
