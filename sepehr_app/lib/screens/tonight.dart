@@ -12,7 +12,8 @@ import '../core/theme.dart';
 
 class TonightScreen extends StatefulWidget {
   final VoidCallback onOpenSky;
-  const TonightScreen({super.key, required this.onOpenSky});
+  final VoidCallback onOpenObservatory;
+  const TonightScreen({super.key, required this.onOpenSky, required this.onOpenObservatory});
 
   @override
   State<TonightScreen> createState() => _TonightScreenState();
@@ -158,6 +159,13 @@ class _TonightScreenState extends State<TonightScreen> with SingleTickerProvider
             onPressed: widget.onOpenSky,
             icon: const Icon(Icons.explore),
             label: const Text('نقشه‌ی آسمان را باز کن', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(15)),
+            onPressed: widget.onOpenObservatory,
+            icon: const Icon(Icons.telescope),
+            label: const Text('برنامه‌ریزی رصد در رصدگاه سپهر ۳'),
           ),
           if (nextEvent != null) ...[
             const SizedBox(height: 12),

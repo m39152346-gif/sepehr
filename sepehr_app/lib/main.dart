@@ -8,6 +8,7 @@ import 'screens/apod.dart';
 import 'screens/events.dart';
 import 'screens/iss.dart';
 import 'screens/location_picker.dart';
+import 'screens/observatory.dart';
 import 'screens/quiz.dart';
 import 'screens/settings.dart';
 import 'screens/sky_map.dart';
@@ -71,12 +72,16 @@ class _SepehrAppState extends State<SepehrApp> {
 
   Widget _home(Place place, AppSettings settings) {
     final pages = <Widget>[
-      TonightScreen(onOpenSky: () => setState(() => _tab = 1)),
+      TonightScreen(
+        onOpenSky: () => setState(() => _tab = 1),
+        onOpenObservatory: () => setState(() => _tab = 6),
+      ),
       SkyMapScreen(key: ValueKey('sky-${place.lat}-${place.lon}')),
       IssScreen(active: _tab == 2),
       ApodScreen(active: _tab == 3),
       const EventsScreen(),
       const QuizScreen(),
+      ObservatoryScreen(active: _tab == 6),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -116,6 +121,7 @@ class _SepehrAppState extends State<SepehrApp> {
           NavigationDestination(icon: Icon(Icons.image), label: 'عکس روز'),
           NavigationDestination(icon: Icon(Icons.event), label: 'رویدادها'),
           NavigationDestination(icon: Icon(Icons.quiz), label: 'کوییز'),
+          NavigationDestination(icon: Icon(Icons.explore), label: 'رصدگاه'),
         ],
       ),
     );
