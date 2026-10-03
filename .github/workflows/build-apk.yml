@@ -109,7 +109,7 @@ jobs:
       - name: Verify APK signature and generate checksum
         run: |
           set -euo pipefail
-          APK=sepehr_app/build/app/outputs/flutter-apk/app-release.apk
+          APK=build/app/outputs/flutter-apk/app-release.apk
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
           if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT/build-tools" ]; then
             echo "Android SDK build-tools directory was not found" >&2
