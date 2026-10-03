@@ -164,7 +164,7 @@ class _TonightScreenState extends State<TonightScreen> with SingleTickerProvider
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(15)),
             onPressed: widget.onOpenObservatory,
-            icon: const Icon(Icons.telescope),
+            icon: const Icon(Icons.explore),
             label: const Text('برنامه‌ریزی رصد در رصدگاه سپهر ۳'),
           ),
           if (nextEvent != null) ...[
