@@ -106,14 +106,35 @@ jobs:
           fi
           exit "$build_status"
 
+      - name: Verify APK signature and generate checksum
+        run: |
+          set -euo pipefail
+          APK=sepehr_app/build/app/outputs/flutter-apk/app-release.apk
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT/build-tools" ]; then
+            echo "Android SDK build-tools directory was not found" >&2
+            exit 1
+          fi
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -name apksigner -print | sort -V | tail -n 1)"
+          if [ -z "$APKSIGNER" ]; then
+            echo "apksigner was not found in Android SDK build-tools" >&2
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          sha256sum "$APK" | tee "$APK.sha256"
+
       - uses: actions/upload-artifact@v4
         with:
           name: sepehr-apk
-          path: sepehr_app/build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            sepehr_app/build/app/outputs/flutter-apk/app-release.apk
+            sepehr_app/build/app/outputs/flutter-apk/app-release.apk.sha256
 
-      - name: Publish GitHub Release (on version tags like v2.0.0)
+      - name: Publish GitHub Release (on version tags like v3.0.1)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: sepehr_app/build/app/outputs/flutter-apk/app-release.apk
+          files: |
+            sepehr_app/build/app/outputs/flutter-apk/app-release.apk
+            sepehr_app/build/app/outputs/flutter-apk/app-release.apk.sha256
           generate_release_notes: true
